@@ -1,0 +1,68 @@
+---
+resources:
+  - name: resource-tutorial
+    type: git
+    source:
+      uri: https://github.com/starkandwayne/concourse-tutorial.git
+      # branch: develop
+      branch: master
+  - name: resource-gist
+    type: git
+    source:
+      # branch: master
+      uri: git@gist.github.com:2efb08ab134ba8d4586970de7067e423.git
+      
+      private_key: |
+        -----BEGIN RSA PRIVATE KEY-----
+        MIIEowIBAAKCAQEAp/Tcj0IhF9PG27xq6dH4G72Nqns0KjaFnBABLEZty8DtFiaS
+        oESMZgrsrEJe36l1kaE9i/3UWKYrU5LZsDvn8DVc4Y5U0IE/QcmsplH5G0zSA0VJ
+        VRLB4higtJV4JPXKyjS1MBG5pLAD7pUbQ+jBj3a6icsHEuSGAfssY2lpSj8UOUwd
+        fmnPaaXmyY3x1K1KuaggQ8mLOJNPAJ4x2jar+bap0URlggbu2kFQ4/XakDZVCRxT
+        JDybRM37RwrSqLYspnOsaJ18z2EJCuIaiVcySyz7DjVcPTdXQzjkWw8nYPX5IykN
+        zHfHC6qgCcN4AJlgFZl1F9xisXnD+B5X5R4LWwIDAQABAoIBAAQc/g3QG8lemV8m
+        RSQGzWG4ibCkJcnm3ezNg4nXC7dSuTuypCKiqyGQoO0zDunBV6zCWySDieDF6Qe5
+        7/Td8rcyR10KxE7661asHrtQBJ7Did0kpEAeHntwCPeDNZcKIfZDxjAwLvC2ktIT
+        +r/2Ak+GI9leDIVM7W88/IBOw5Ja4POYZUpJ+v6ym3kEA+Xgrw5ej0+pOO2NmTFL
+        pujQd0P1MnK9kaftRPBg9OlFpq0wjViLDPZKcb9XzHBx6LYHqE2IG7P93b8hMNqP
+        A8HAcH8S1h7k3nWT20x/eTVWFTNtGoAsO31nz6QH+E6JbFs6ApNpiON30HkDSFX5
+        wnhbsikCgYEA2gCzC01cJSdzp/yZexelM99ivpwEmytE6R4qBemiNAcRwmKTYSeA
+        ct3AnxPBj1vIaTgwtq9P/JBEPQMonhTWq3bj1v+70HdBz50njd0Rl58zC9rx6nF4
+        2zNOTga3EcmQ2EyeZjxFVSs8v1YtHgT1OUjkcFnS2paBrKkiLhd38WcCgYEAxTsY
+        NkoNTQBitORS5wtp39Dr87k6tyVOmRn8MZuBeaKAJ2cIXFHDwRtNm5so+jQS63td
+        QVOu4wF9fxBPHrxT4z/D9ASfrmsc1Z7gTRGu/sHGYmdDOomAI6RKBBjNtfgBIekW
+        HNrLt+xLXxr8xL7QC8bJtKwPmigWVzo8DWSrme0CgYACrKeFp/lNa2J72Rl47R1V
+        uZPYislzreA2i+wwDmGzCbMqE1ODiZyFzDqkuPVS8OlQgSP32ca9bnen1/YTmmXX
+        zKmW5aRENnJUPbVShDfHCGjz6Ee3fJTi+4omYua0DSj9vlLjJjIjjVg9cK01BRKN
+        FVvYFQIFNHt6xshokFkkWQKBgQCYVS48MDHZuWSDhp4paX1aqwiy8+vPrPbp9VH+
+        FreH9OS6ii/A7j4dljL47nxV04aRbnT2keXP20TMsRILETZRnNyCSlfy5TQeIlnn
+        7LKWfZ/2PP+F5NGdtbSdOXMZCvYE9PxpSOxzoAQO7s8wPph9oAoGi6Z5UGEA+i+L
+        wKdxeQKBgDqFNCOKd50GzA5tavw06AzzsHzYc1PoJBIw3NphYkJimxPbI8RBkkCa
+        HsMd73mr7LrLgzZWj7gBD5GXzBqHDdm+/8u4ev3dhquGeBprFJI8E7K7TEi2Spwz
+        rm8Hl2L077bV+VOTb177RetIFLt/dY8KREWC72vvqxVIzalhjDnG
+        -----END RSA PRIVATE KEY-----
+
+jobs:
+  - name: job-bump-date
+    serial: true
+    plan:
+      - get: resource-tutorial
+      - get: resource-gist
+      - task: bump-timestamp-file
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            # source: {repository: starkandwayne/concourse}
+            source: {repository: bitnami/concourse}
+
+          inputs:
+            - name: resource-tutorial
+            - name: resource-gist
+          outputs:
+            - name: updated-gist
+          run:
+            path: resource-tutorial/tutorials/basic/publishing-outputs/bump-timestamp-file.sh
+
+      - put: resource-gist
+        params:
+          repository: updated-gist
