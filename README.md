@@ -682,4 +682,217 @@ errored
     $ cd ~/concourse-semver-test/tutorials/basic/publishing-outputs/    
     ```
 
+    ```diff
+    $ diff -u pipeline.yml_old pipeline.yml
+    --- pipeline.yml_old    2023-09-10 15:07:50.284951802 +0900
+    +++ pipeline.yml        2023-09-10 15:17:59.549318976 +0900
+    @@ -10,35 +10,8 @@
+        source:
+        # branch: master
+        branch: main
+    -      uri: git@gist.github.com:5e40d8df48fa30baf9abee4b35a2241a.git
+    -      private_key: |
+    -        -----BEGIN RSA PRIVATE KEY-----
+    -        MIIEowIBAAKCAQEAp/Tcj0IhF9PG27xq6dH4G72Nqns0KjaFnBABLEZty8DtFiaS
+    -        oESMZgrsrEJe36l1kaE9i/3UWKYrU5LZsDvn8DVc4Y5U0IE/QcmsplH5G0zSA0VJ
+    -        VRLB4higtJV4JPXKyjS1MBG5pLAD7pUbQ+jBj3a6icsHEuSGAfssY2lpSj8UOUwd
+    -        fmnPaaXmyY3x1K1KuaggQ8mLOJNPAJ4x2jar+bap0URlggbu2kFQ4/XakDZVCRxT
+    -        JDybRM37RwrSqLYspnOsaJ18z2EJCuIaiVcySyz7DjVcPTdXQzjkWw8nYPX5IykN
+    -        zHfHC6qgCcN4AJlgFZl1F9xisXnD+B5X5R4LWwIDAQABAoIBAAQc/g3QG8lemV8m
+    -        RSQGzWG4ibCkJcnm3ezNg4nXC7dSuTuypCKiqyGQoO0zDunBV6zCWySDieDF6Qe5
+    -        7/Td8rcyR10KxE7661asHrtQBJ7Did0kpEAeHntwCPeDNZcKIfZDxjAwLvC2ktIT
+    -        +r/2Ak+GI9leDIVM7W88/IBOw5Ja4POYZUpJ+v6ym3kEA+Xgrw5ej0+pOO2NmTFL
+    -        pujQd0P1MnK9kaftRPBg9OlFpq0wjViLDPZKcb9XzHBx6LYHqE2IG7P93b8hMNqP
+    -        A8HAcH8S1h7k3nWT20x/eTVWFTNtGoAsO31nz6QH+E6JbFs6ApNpiON30HkDSFX5
+    -        wnhbsikCgYEA2gCzC01cJSdzp/yZexelM99ivpwEmytE6R4qBemiNAcRwmKTYSeA
+    -        ct3AnxPBj1vIaTgwtq9P/JBEPQMonhTWq3bj1v+70HdBz50njd0Rl58zC9rx6nF4
+    -        2zNOTga3EcmQ2EyeZjxFVSs8v1YtHgT1OUjkcFnS2paBrKkiLhd38WcCgYEAxTsY
+    -        NkoNTQBitORS5wtp39Dr87k6tyVOmRn8MZuBeaKAJ2cIXFHDwRtNm5so+jQS63td
+    -        QVOu4wF9fxBPHrxT4z/D9ASfrmsc1Z7gTRGu/sHGYmdDOomAI6RKBBjNtfgBIekW
+    -        HNrLt+xLXxr8xL7QC8bJtKwPmigWVzo8DWSrme0CgYACrKeFp/lNa2J72Rl47R1V
+    -        uZPYislzreA2i+wwDmGzCbMqE1ODiZyFzDqkuPVS8OlQgSP32ca9bnen1/YTmmXX
+    -        zKmW5aRENnJUPbVShDfHCGjz6Ee3fJTi+4omYua0DSj9vlLjJjIjjVg9cK01BRKN
+    -        FVvYFQIFNHt6xshokFkkWQKBgQCYVS48MDHZuWSDhp4paX1aqwiy8+vPrPbp9VH+
+    -        FreH9OS6ii/A7j4dljL47nxV04aRbnT2keXP20TMsRILETZRnNyCSlfy5TQeIlnn
+    -        7LKWfZ/2PP+F5NGdtbSdOXMZCvYE9PxpSOxzoAQO7s8wPph9oAoGi6Z5UGEA+i+L
+    -        wKdxeQKBgDqFNCOKd50GzA5tavw06AzzsHzYc1PoJBIw3NphYkJimxPbI8RBkkCa
+    -        HsMd73mr7LrLgzZWj7gBD5GXzBqHDdm+/8u4ev3dhquGeBprFJI8E7K7TEi2Spwz
+    -        rm8Hl2L077bV+VOTb177RetIFLt/dY8KREWC72vvqxVIzalhjDnG
+    -        -----END RSA PRIVATE KEY-----
+    +      uri: git@gist.github.com:8becd8bea76a7442d6a6c2d46a49f0b1.git
+    +      private_key: ((private-key))
+    
+    jobs:
+      - name: job-bump-date    
+    ```
 
+## 秘密鍵をvaultに登録
+
+- 以下のコマンドを実行
+
+    ```sh
+    $ cat ~/.ssh/id_rsa | vault kv put concourse/main/private-key value=-
+    ```
+
+    - 結果
+
+        ```sh
+        Success! Data written to: concourse/main/private-key
+        ```
+
+## パイプラインの作衛
+
+- 以下のコマンドを実行
+
+    ```sh
+    $ cd ~/concourse-semver-test/tutorials/basic/publishing-outputs
+    ```
+
+- パイプラインの作成
+    ```sh
+    fly -t tutorial set-pipeline -p publishing-outputs -c pipeline.yml -n
+    ```
+
+    - 結果
+
+        ```sh
+        resources:
+        resource resource-tutorial has been added:
+        + name: resource-tutorial
+        + source:
+        +   branch: develop
+        +   uri: https://github.com/starkandwayne/concourse-tutorial.git
+        + type: git
+        
+        resource resource-gist has been added:
+        + name: resource-gist
+        + source:
+        +   branch: main
+        +   private_key: ((private-key))
+        +   uri: git@gist.github.com:8becd8bea76a7442d6a6c2d46a49f0b1.git
+        + type: git
+        
+        jobs:
+        job job-bump-date has been added:
+        + name: job-bump-date
+        + plan:
+        + - get: resource-tutorial
+        + - get: resource-gist
+        + - config:
+        +     image_resource:
+        +       name: ""
+        +       source:
+        +         repository: getourneau/alpine-bash-git
+        +       type: docker-image
+        +     inputs:
+        +     - name: resource-tutorial
+        +     - name: resource-gist
+        +     outputs:
+        +     - name: updated-gist
+        +     platform: linux
+        +     run:
+        +       path: resource-tutorial/tutorials/basic/publishing-outputs/bump-timestamp-file.sh
+        +   task: bump-timestamp-file
+        + - params:
+        +     repository: updated-gist
+        +   put: resource-gist
+        + serial: true
+        
+        pipeline name: publishing-outputs
+
+        apply configuration? [yN]: y
+        pipeline created!
+        you can view your pipeline here: http://localhost:8080/teams/main/pipelines/publishing-outputs
+
+        the pipeline is currently paused. to unpause, either:
+        - run the unpause-pipeline command:
+            fly -t tutorial unpause-pipeline -p publishing-outputs
+        - click play next to the pipeline in the web ui
+        ```
+
+- リソース（秘密鍵）チェック → 成功
+
+    ```sh
+    $ fly -t tutorial check-resource -r publishing-outputs/resource-gist
+    ```
+
+    - 結果
+
+        ```
+        checking publishing-outputs/resource-gist in build 60
+        initializing check: resource-gist
+        selected worker: 97ad8c1afbe6
+        Identity added: /tmp/git-resource-private-key (/tmp/git-resource-private-key)
+        Cloning into '/tmp/git-resource-repo-cache'...
+        succeeded
+        ```
+
+    ```sh
+    $ fly -t tutorial unpause-pipeline -p publishing-outputs
+    ```
+    
+    ```sh
+    $ fly -t tutorial trigger-job -j publishing-outputs/job-bump-date -w
+    ```
+
+    - 結果（成功）
+
+        ```sh
+        started publishing-outputs/job-bump-date #1
+
+        selected worker: 97ad8c1afbe6
+        Cloning into '/tmp/build/get'...
+        a3edcb3 restrict mkdocs packages until can make time to upgrade https://ci2.starkandwayne.com/teams/starkandwayne/pipelines/concourse-tutorial/jobs/website-master/builds/32
+        selected worker: 97ad8c1afbe6
+        Identity added: /tmp/git-resource-private-key (/tmp/git-resource-private-key)
+        Cloning into '/tmp/build/get'...
+        43e49c9 
+        initializing
+        initializing check: image
+        selected worker: 97ad8c1afbe6
+        selected worker: 97ad8c1afbe6
+        waiting for docker to come up...
+        Pulling getourneau/alpine-bash-git@sha256:246ebea4839401a027da43e406a0ceaf0f763997a516cf85c344425eb913ffe7...
+        docker.io/getourneau/alpine-bash-git@sha256:246ebea4839401a027da43e406a0ceaf0f763997a516cf85c344425eb913ffe7: Pulling from getourneau/alpine-bash-git
+        4fe2ade4980c: Pulling fs layer
+        03c196859ec8: Pulling fs layer
+        720d2de11875: Pulling fs layer
+        4fe2ade4980c: Verifying Checksum
+        4fe2ade4980c: Download complete
+        720d2de11875: Verifying Checksum
+        720d2de11875: Download complete
+        4fe2ade4980c: Pull complete
+        03c196859ec8: Verifying Checksum
+        03c196859ec8: Download complete
+        03c196859ec8: Pull complete
+        720d2de11875: Pull complete
+        Digest: sha256:246ebea4839401a027da43e406a0ceaf0f763997a516cf85c344425eb913ffe7
+        Status: Downloaded newer image for getourneau/alpine-bash-git@sha256:246ebea4839401a027da43e406a0ceaf0f763997a516cf85c344425eb913ffe7
+        docker.io/getourneau/alpine-bash-git@sha256:246ebea4839401a027da43e406a0ceaf0f763997a516cf85c344425eb913ffe7
+
+        Successfully pulled getourneau/alpine-bash-git@sha256:246ebea4839401a027da43e406a0ceaf0f763997a516cf85c344425eb913ffe7.
+
+        selected worker: 97ad8c1afbe6
+        running resource-tutorial/tutorials/basic/publishing-outputs/bump-timestamp-file.sh
+        + git clone resource-gist updated-gist
+        Cloning into 'updated-gist'...
+        done.
+        + cd updated-gist
+        + date
+        + echo Sun Sep 10 06:58:57 UTC 2023
+        + git config --global user.email nobody@concourse-ci.org
+        + git config --global user.name Concourse
+        + git add .
+        + git commit -m 'Bumped date'
+        [main 1811c86] Bumped date
+        1 file changed, 1 insertion(+), 1 deletion(-)
+        selected worker: 97ad8c1afbe6
+        Identity added: /tmp/git-resource-private-key (/tmp/git-resource-private-key)
+        To gist.github.com:8becd8bea76a7442d6a6c2d46a49f0b1.git
+        43e49c9..1811c86  HEAD -> main
+        selected worker: 97ad8c1afbe6
+        Identity added: /tmp/git-resource-private-key (/tmp/git-resource-private-key)
+        Cloning into '/tmp/build/get'...
+        1811c86 Bumped date
+        succeeded
+        ```
