@@ -1,0 +1,46 @@
+---
+resources:
+  - name: git-repository
+    type: git
+    source:
+      branch: main
+      # sshで認証するため、uriはsshのuriに設定する必要がある？(httpsだと正常動作しない）
+      # uri: https://github.com/moriyamaES/semver-test.git
+      uri: git@github.com:moriyamaES/semver-test.git
+      private_key: ((private-key))
+
+jobs:
+  - name: job-bump-date
+    # serial: true
+    plan:
+      - get: git-repository
+        # trigger: true
+      - task: bump-timestamp-file
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source: {repository: getourneau/alpine-bash-git}
+
+          # outputsをinputsと同じ名前にしないと正常動作しない模様
+          inputs:
+            - name: git-repository
+          outputs:
+            - name: git-repository
+          run:
+            path: /bin/sh
+            args:
+              - -exc
+              - |
+                # git cloneは不要。この時点ではconcorseがgit cloneを実行してる模様。
+                cd git-repository
+                date > ./version/number
+                cat ./version/number
+                # メールアドレスは必須（ユーザ名は任意）
+                git config --global user.email "concourse@local"
+                git add ./version/number
+                git commit -m "Bump version to $new_version"
+                # git tag v$new_version
+      - put: git-repository
+        params:
+          repository: git-repository

@@ -1803,3 +1803,62 @@ https://blog.lespaulstudioplus.info/posts/26/
 
 https://concourse-ci.org/basic-git-operations.html
 
+
+
+- concourse Web UIにログインする
+
+    ```sh
+    $ fly --target tutorial login --concourse-url http://localhost:8080
+    ```
+
+    - 操作
+    - `http://localhost:8080/login?fly_port=43269` でホストOSのブラウザにアクセスし、表示されたtokenを貼り付ける
+    - ユーザID: `test`、パスワード: `test` とする
+    - 上記操作をすると、Concourse CI のWeb UIにログインできる
+
+        ```
+        logging in to team 'main'
+
+        navigate to the following URL in your browser:
+
+        http://localhost:8080/login?fly_port=43269
+
+        or enter token manually (input hidden): 
+        target saved
+        ```
+
+- パイプラインを削除する
+
+    ```sh
+    $ fly -t tutorial destroy-pipeline -p bump-soft-version -n
+    ```
+
+- パイプラインを作成
+
+    ```sh
+    $ fly -t tutorial set-pipeline -p bump-soft-version -c pipeline-bump-git-version.yml -n
+    ```
+
+
+    ```sh
+    $ cd ~/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers/
+    ```
+
+    ```sh
+    $ fly -t tutorial set-pipeline -p versions-and-buildnumbers -c pipeline-bump-then-save-at-git.yml -v bump_type=minor -n
+    ```
+
+- リソースのチェク
+
+    ```sh
+    $ fly -t tutorial check-resource -r versions-and-buildnumbers/source-code
+    ```
+
+- パイプラインの実行
+    ```sh
+    fly -t tutorial unpause-pipeline -p versions-and-buildnumbers
+    ```
+    
+    ```sh
+    fly -t tutorial trigger-job -j versions-and-buildnumbers/bump-version -w
+    ```
