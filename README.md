@@ -898,7 +898,7 @@ errored
         ```
 
 
-## Concourse CI での SemVer - セマンティックバージョニング
+## Concourse CI での SemVer - セマンティックバージョニング(GtiHub上で管理のバージョンファイルをConcourse CIに更新させる)
 
 - 以下のサイトを参考とした
 
@@ -1080,6 +1080,8 @@ errored
         0.0.1succeeded
         ```
 
+- 【結論】`type: semver` のリソースを使えば、GitHub上のファイルで管理するバージョン番号が参照できることが分かった。しかし、バージョン番号の更新方法が分からない。
+
 ## バージョンを更新するパイプラインの作成
 
 - 以下のコマンドを実行
@@ -1226,6 +1228,8 @@ errored
         ```sh
         ```
 
+- 【問題発生！！】`type: semver` のリソースでは、GitHub上のファイルで管理するバージョン番号が更新できない！！
+
 
 ## 上手くいかないので、ChatGPTに聞いてみた
 
@@ -1310,7 +1314,6 @@ errored
     $ fly -t your-target set-pipeline -p your-pipeline-name -c pipeline.yml -v bump_type=minor
     ```
 
-
     ```
     jobs:
     - name: bump-version
@@ -1383,6 +1386,12 @@ errored
             - name: source-code
     
     ```
+
+- 上記をヒントに パイプラインのYAMLを作成することにした。
+
+- 上手くいかない記事は取消線を引く
+
+<del>
 
 ## GitHub用のバージョンを更新するパイプラインの作成
 
@@ -1795,15 +1804,77 @@ Total 4 (delta 0), reused 0 (delta 0)
 To /tmp/build/cc4f7a9f/resource-gist
    b231816..60735d5  main -> main
 
+</del>
 
 ## 上手くいった
 
-- 以下のサイトを参考にした（ただし、ウソが多い）
-https://blog.lespaulstudioplus.info/posts/26/
+- 以下のサイトを参考にした（ただし、記載ないようは中途半端だった）
 
-https://concourse-ci.org/basic-git-operations.html
+    - [誰かのブログ](https://blog.lespaulstudioplus.info/posts/26/)
+
+    - [公式サイト](https://concourse-ci.org/basic-git-operations.html)
 
 
+## Concourse CI で GtiHub上のファイルに日付を記入する(上手くいった)
+
+- 以下のコマンドを実行
+
+    ```sh
+    $ cd ~/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers/
+    ```
+
+- パイプラインYAMLの内容は以下
+
+    ```sh
+    $ cat pipeline-push-to-git-repository-basic.yml
+    ---
+    resources:
+    - name: git-repository
+        type: git
+        source:
+        branch: main
+        # sshで認証するため、uriはsshのuriに設定する必要がある？(httpsだと正常動作しない）
+        # uri: https://github.com/moriyamaES/semver-test.git
+        uri: git@github.com:moriyamaES/semver-test.git
+        private_key: ((private-key))
+
+    jobs:
+    - name: job-bump-date
+        # serial: true
+        plan:
+        - get: git-repository
+            # trigger: true
+        - task: bump-timestamp-file
+            config:
+            platform: linux
+            image_resource:
+                type: docker-image
+                source: {repository: getourneau/alpine-bash-git}
+
+            # outputsをinputsと同じ名前にしないと正常動作しない模様
+            inputs:
+                - name: git-repository
+            outputs:
+                - name: git-repository
+            run:
+                path: /bin/sh
+                args:
+                - -exc
+                - |
+                    # git cloneは不要。この時点ではconcorseがgit cloneを実行してる模様。
+                    cd git-repository
+                    date > ./version/number
+                    cat ./version/number
+                    # メールアドレスは必須（ユーザ名は任意）
+                    git config --global user.email "concourse@local"
+                    git add ./version/number
+                    git commit -m "Bumped date"
+                    # git tag v0.1.6
+        # このPUTで、ローカルリポジトリからリポジトリへのpushが実行されるため、git pushコマンドは不要。
+        - put: git-repository
+            params:
+            repository: git-repository
+        ```
 
 - concourse Web UIにログインする
 
@@ -1812,6 +1883,289 @@ https://concourse-ci.org/basic-git-operations.html
     ```
 
     - 操作
+
+    - `http://localhost:8080/login?fly_port=43269` でホストOSのブラウザにアクセスし、表示されたtokenを貼り付ける
+    - ユーザID: `test`、パスワード: `test` とする
+    - 上記操作をすると、Concourse CI のWeb UIにログインできる
+
+        ```
+        logging in to team 'main'
+
+        navigate to the following URL in your browser:
+
+        http://localhost:8080/login?fly_port=43269
+
+        or enter token manually (input hidden): 
+        target saved
+        ```
+
+- パイプラインを削除する
+
+    ```sh
+    $ fly -t tutorial destroy-pipeline -p push-to-git-repository -n
+    ```
+
+- パイプラインを作成
+
+    ```sh
+    $ cd ~/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers/
+    ```
+
+    ```sh
+    $ fly -t tutorial set-pipeline -p push-to-git-repository -c pipeline-push-to-git-repository-basic.yml -n
+    ```
+
+    - 結果
+
+        ```sh
+        resources:
+          resource git-repository has been added:
+        + name: git-repository
+        + source:
+        +   branch: main
+        +   private_key: ((private-key))
+        +   uri: git@github.com:moriyamaES/semver-test.git
+        + type: git
+        
+        jobs:
+        job job-bump-date has been added:
+        + name: job-bump-date
+        + plan:
+        + - get: git-repository
+        + - config:
+        +     image_resource:
+        +       name: ""
+        +       source:
+        +         repository: getourneau/alpine-bash-git
+        +       type: docker-image
+        +     inputs:
+        +     - name: git-repository
+        +     outputs:
+        +     - name: git-repository
+        +     platform: linux
+        +     run:
+        +       args:
+        +       - -exc
+        +       - |
+        +         # git cloneは不要。この時点ではconcorseがgit cloneを実行してる模様。
+        +         cd git-repository
+        +         date > ./version/number
+        +         cat ./version/number
+        +         # メールアドレスは必須（ユーザ名は任意）
+        +         git config --global user.email "concourse@local"
+        +         git add ./version/number
+        +         git commit -m "Bumped date"
+        +         # git tag v0.1.6
+        +       path: /bin/sh
+        +   task: bump-timestamp-file
+        + - params:
+        +     repository: git-repository
+        +   put: git-repository
+        
+        pipeline name: push-to-git-repository
+
+        pipeline created!
+        you can view your pipeline here: http://localhost:8080/teams/main/pipelines/push-to-git-repository
+
+        the pipeline is currently paused. to unpause, either:
+        - run the unpause-pipeline command:
+            fly -t tutorial unpause-pipeline -p push-to-git-repository
+        - click play next to the pipeline in the web ui
+        
+        ```
+
+- リソースのチェク
+
+    ```sh
+    $ fly -t tutorial check-resource -r push-to-git-repository/git-repository
+    ```
+
+    - 結果
+
+        ```sh
+        checking push-to-git-repository/git-repository in build 14230
+        initializing check: git-repository
+        selected worker: 97ad8c1afbe6
+        Identity added: /tmp/git-resource-private-key (/tmp/git-resource-private-key)
+        HEAD is now at 0215a39 Bump version to v4.3.0
+        succeeded
+        ```
+
+- パイプラインの実行
+    ```sh
+    $ fly -t tutorial unpause-pipeline -p push-to-git-repository
+    ```
+    
+    ```sh
+    $ fly -t tutorial trigger-job -j push-to-git-repository/job-bump-date -w
+    ```
+
+    - 結果
+
+        ```sh
+        started push-to-git-repository/job-bump-date #1
+
+        selected worker: 97ad8c1afbe6
+        INFO: found existing resource cache
+
+        initializing
+        initializing check: image
+        selected worker: 97ad8c1afbe6
+        selected worker: 97ad8c1afbe6
+        INFO: found existing resource cache
+
+        selected worker: 97ad8c1afbe6
+        running /bin/sh -exc # git cloneは不要。この時点ではconcorseがgit cloneを実行してる模様。
+        cd git-repository
+        date > ./version/number
+        cat ./version/number
+        # メールアドレスは必須（ユーザ名は任意）
+        git config --global user.email "concourse@local"
+        git add ./version/number
+        git commit -m "Bumped date"
+        # git tag v0.1.6
+
+        + cd git-repository
+        + date
+        + cat ./version/number
+        Fri Sep 15 22:40:47 UTC 2023
+        + git config --global user.email concourse@local
+        + git add ./version/number
+        + git commit -m 'Bumped date'
+        [detached HEAD e9ec4c4] Bumped date
+        1 file changed, 1 insertion(+), 1 deletion(-)
+        selected worker: 97ad8c1afbe6
+        Identity added: /tmp/git-resource-private-key (/tmp/git-resource-private-key)
+        To github.com:moriyamaES/semver-test.git
+        0215a39..e9ec4c4  HEAD -> main
+        selected worker: 97ad8c1afbe6
+        Identity added: /tmp/git-resource-private-key (/tmp/git-resource-private-key)
+        Cloning into '/tmp/build/get'...
+        e9ec4c4 Bumped date
+        succeeded
+        ```
+
+## Concourse CI で GtiHub上のファイルのバージョン番号を更新する(上手くいった)
+
+- 以下のサイトを参考にした（ただし、記載ないようは中途半端だった）
+
+    - [誰かのブログ](https://blog.lespaulstudioplus.info/posts/26/)
+
+    - [公式サイト](https://concourse-ci.org/basic-git-operations.html)
+
+- 以下のコマンドを実行
+
+    ```sh
+    $ cd ~/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers/
+    ```
+
+- パイプラインYAMLの内容は以下
+
+    ```sh
+    # cat pipeline-bump-soft-version.yml 
+    ---
+    resources:
+    - name: git-repository
+        type: git
+        source:
+        branch: main
+        # sshで認証するため、uriはsshのuriに設定する必要がある(httpsだと正常動作しない）
+        uri: git@github.com:moriyamaES/semver-test.git
+        # GitHubに接続するための秘密鍵はVaultで管理
+        private_key: ((private-key))
+    jobs:
+    - name: bump-version
+        plan:
+        - get: git-repository
+        - task: bump-timestamp-file
+            config:
+            platform: linux
+            image_resource:
+                type: docker-image
+                # bashとgitが実行できるコンテナをpull
+                source: {repository: getourneau/alpine-bash-git}
+            # nputsとoutputsは、同じ名前にしないと正常動作しない模様
+            inputs:
+                - name: git-repository
+            outputs:
+                - name: git-repository
+            run:
+                path: /bin/sh
+                args:
+                - -exc
+                - |
+
+                    # この時点ではconcorseがgit cloneを実行してるため、git cloneの実行は不要。
+                    # gitのローカルリポジトリのディレクトリに移動
+                    cd git-repository
+
+                    # 現在のバージョンを取得
+                    current_version=$(cat ./version/number)
+                    
+                    # バージョンをバンプするタイプを指定
+                    BUMP_TYPE=${BUMP_TYPE:-"major"}  # デフォルトはメジャーバージョンをバンプ
+                    
+                    # current_version が空文字列の場合
+                    if [ "$current_version" = "" ]; then
+                        # 適切な初期バージョンを設定
+                        if [ "$BUMP_TYPE" = "major" ]; then
+                        new_version="1.0.0"
+                        elif [ "$BUMP_TYPE" = "minor" ]; then
+                        new_version="0.1.0"
+                        elif [ "$BUMP_TYPE" = "patch" ]; then
+                        new_version="0.0.1"
+                        else
+                        echo "Invalid bump_type specified."
+                        exit 1
+                        fi
+                    else
+                    # バージョンをバンプする
+                    IFS_SAVE=$IFS
+                    IFS='.'
+                    set $current_version
+                    IFS=$IFS_SAVE
+                    major="$1"
+                    minor="$2"
+                    patch="$3"
+                    if [ "$BUMP_TYPE" = "major" ]; then
+                        major=$((major + 1))
+                        minor=0
+                        patch=0
+                    elif [ "$BUMP_TYPE" = "minor" ]; then
+                        minor=$((minor + 1))
+                        patch=0
+                    elif [ "$BUMP_TYPE" = "patch" ]; then
+                        patch=$((patch + 1))
+                    fi
+                    new_version="$major.$minor.$patch"
+                    fi
+            
+                    # 新しいバージョンをファイルに書き込む
+                    echo "$new_version" > ./version/number
+                    cat ./version/number
+
+                    # コミットしタグを付加する
+                    git config --global user.email "concourse@local" # メールアドレスは必須（ユーザ名は任意）
+                    git add ./version/number
+                    git commit -m "Bump version to v$new_version"
+                    git tag v$new_version
+            params:
+                BUMP_TYPE: ((bump-type))
+
+        # このPUTで、ローカルリポジトリからリポジトリへのpushを実行するため、git pushの実行は不要。
+        - put: git-repository
+            params:
+            repository: git-repository
+    ```
+
+- concourse Web UIにログインする
+
+    ```sh
+    $ fly --target tutorial login --concourse-url http://localhost:8080
+    ```
+
+    - 操作
+
     - `http://localhost:8080/login?fly_port=43269` でホストOSのブラウザにアクセスし、表示されたtokenを貼り付ける
     - ユーザID: `test`、パスワード: `test` とする
     - 上記操作をすると、Concourse CI のWeb UIにログインできる
@@ -1840,8 +2194,114 @@ https://concourse-ci.org/basic-git-operations.html
     ```
 
     ```sh
-    $ fly -t tutorial set-pipeline -p bump-soft-minor-version -c pipeline-bump-soft-version.yml -v bump_type=minor -n
+    $ fly -t tutorial set-pipeline -p bump-soft-minor-version -c pipeline-bump-soft-version.yml -v bump-type=minor -n
     ```
+
+    - 結果
+
+        ```sh
+        resources:
+        resource git-repository has been added:
+        + name: git-repository
+        + source:
+        +   branch: main
+        +   private_key: ((private-key))
+        +   uri: git@github.com:moriyamaES/semver-test.git
+        + type: git
+        
+        jobs:
+        job bump-version has been added:
+        + name: bump-version
+        + plan:
+        + - get: git-repository
+        + - config:
+        +     image_resource:
+        +       name: ""
+        +       source:
+        +         repository: getourneau/alpine-bash-git
+        +       type: docker-image
+        +     inputs:
+        +     - name: git-repository
+        +     outputs:
+        +     - name: git-repository
+        +     params:
+        +       BUMP_TYPE: minor
+        +     platform: linux
+        +     run:
+        +       args:
+        +       - -exc
+        +       - |2
+        + 
+        +         # この時点ではconcorseがgit cloneを実行してるため、git cloneの実行は不要。
+        +         # gitのローカルリポジトリのディレクトリに移動
+        +         cd git-repository
+        + 
+        +         # 現在のバージョンを取得
+        +         current_version=$(cat ./version/number)
+        + 
+        +         # バージョンをバンプするタイプを指定
+        +         BUMP_TYPE=${BUMP_TYPE:-"major"}  # デフォルトはメジャーバージョンをバンプ
+        + 
+        +         # current_version が空文字列の場合
+        +         if [ "$current_version" = "" ]; then
+        +             # 適切な初期バージョンを設定
+        +             if [ "$BUMP_TYPE" = "major" ]; then
+        +               new_version="1.0.0"
+        +             elif [ "$BUMP_TYPE" = "minor" ]; then
+        +               new_version="0.1.0"
+        +             elif [ "$BUMP_TYPE" = "patch" ]; then
+        +               new_version="0.0.1"
+        +             else
+        +               echo "Invalid bump_type specified."
+        +               exit 1
+        +             fi
+        +         else
+        +           # バージョンをバンプする
+        +           IFS_SAVE=$IFS
+        +           IFS='.'
+        +           set $current_version
+        +           IFS=$IFS_SAVE
+        +           major="$1"
+        +           minor="$2"
+        +           patch="$3"
+        +           if [ "$BUMP_TYPE" = "major" ]; then
+        +             major=$((major + 1))
+        +             minor=0
+        +             patch=0
+        +           elif [ "$BUMP_TYPE" = "minor" ]; then
+        +             minor=$((minor + 1))
+        +             patch=0
+        +           elif [ "$BUMP_TYPE" = "patch" ]; then
+        +             patch=$((patch + 1))
+        +           fi
+        +           new_version="$major.$minor.$patch"
+        +         fi
+        + 
+        +         # 新しいバージョンをファイルに書き込む
+        +         echo "$new_version" > ./version/number
+        +         cat ./version/number
+        + 
+        +         # コミットしタグを付加する
+        +         git config --global user.email "concourse@local" # メールアドレスは必須（ユーザ名は任意）
+        +         git add ./version/number
+        +         git commit -m "Bump version to v$new_version"
+        +         git tag v$new_version
+        +       path: /bin/sh
+        +   task: bump-timestamp-file
+        + - params:
+        +     repository: git-repository
+        +   put: git-repository
+        
+        pipeline name: bump-soft-minor-version
+
+        pipeline created!
+        you can view your pipeline here: http://localhost:8080/teams/main/pipelines/bump-soft-minor-version
+
+        the pipeline is currently paused. to unpause, either:
+        - run the unpause-pipeline command:
+            fly -t tutorial unpause-pipeline -p bump-soft-minor-version
+        - click play next to the pipeline in the web ui
+        ```
 
 - リソースのチェク
 
@@ -1849,11 +2309,126 @@ https://concourse-ci.org/basic-git-operations.html
     $ fly -t tutorial check-resource -r bump-soft-minor-version/git-repository
     ```
 
+    - 結果
+
+        ```sh
+        checking bump-soft-minor-version/git-repository in build 14313
+        initializing check: git-repository
+        selected worker: 97ad8c1afbe6
+        Identity added: /tmp/git-resource-private-key (/tmp/git-resource-private-key)
+        HEAD is now at e9ec4c4 Bumped date
+        succeeded
+        ```
+
 - パイプラインの実行
     ```sh
-    fly -t tutorial unpause-pipeline -p bump-soft-minor-version
+    $ fly -t tutorial unpause-pipeline -p bump-soft-minor-version
     ```
-    
+
     ```sh
-    fly -t tutorial trigger-job -j bump-soft-minor-version/bump-version -w
+    $ fly -t tutorial trigger-job -j bump-soft-minor-version/bump-version -w
     ```
+
+    - 結果
+
+        ```sh
+        # fly -t tutorial trigger-job -j bump-soft-minor-version/bump-version -w
+        started bump-soft-minor-version/bump-version #2
+
+        selected worker: 97ad8c1afbe6
+        Identity added: /tmp/git-resource-private-key (/tmp/git-resource-private-key)
+        Cloning into '/tmp/build/get'...
+        d1e237f Update number
+        initializing
+        initializing check: image
+        selected worker: 97ad8c1afbe6
+        selected worker: 97ad8c1afbe6
+        INFO: found existing resource cache
+
+        selected worker: 97ad8c1afbe6
+        running /bin/sh -exc 
+        # この時点ではconcorseがgit cloneを実行してるため、git cloneの実行は不要。
+        # gitのローカルリポジトリのディレクトリに移動
+        cd git-repository
+
+        # 現在のバージョンを取得
+        current_version=$(cat ./version/number)
+
+        # バージョンをバンプするタイプを指定
+        BUMP_TYPE=${BUMP_TYPE:-"major"}  # デフォルトはメジャーバージョンをバンプ
+
+        # current_version が空文字列の場合
+        if [ "$current_version" = "" ]; then
+            # 適切な初期バージョンを設定
+            if [ "$BUMP_TYPE" = "major" ]; then
+            new_version="1.0.0"
+            elif [ "$BUMP_TYPE" = "minor" ]; then
+            new_version="0.1.0"
+            elif [ "$BUMP_TYPE" = "patch" ]; then
+            new_version="0.0.1"
+            else
+            echo "Invalid bump_type specified."
+            exit 1
+            fi
+        else
+        # バージョンをバンプする
+        IFS_SAVE=$IFS
+        IFS='.'
+        set $current_version
+        IFS=$IFS_SAVE
+        major="$1"
+        minor="$2"
+        patch="$3"
+        if [ "$BUMP_TYPE" = "major" ]; then
+            major=$((major + 1))
+            minor=0
+            patch=0
+        elif [ "$BUMP_TYPE" = "minor" ]; then
+            minor=$((minor + 1))
+            patch=0
+        elif [ "$BUMP_TYPE" = "patch" ]; then
+            patch=$((patch + 1))
+        fi
+        new_version="$major.$minor.$patch"
+        fi
+
+        # 新しいバージョンをファイルに書き込む
+        echo "$new_version" > ./version/number
+        cat ./version/number
+
+        # コミットしタグを付加する
+        git config --global user.email "concourse@local" # メールアドレスは必須（ユーザ名は任意）
+        git add ./version/number
+        git commit -m "Bump version to v$new_version"
+        git tag v$new_version
+
+        + cd git-repository
+        + cat ./version/number
+        + current_version=
+        + BUMP_TYPE=minor
+        + '['  '='  ]
+        + '[' minor '=' major ]
+        + '[' minor '=' minor ]
+        + new_version=0.1.0
+        + echo 0.1.0
+        + cat ./version/number
+        0.1.0
+        + git config --global user.email concourse@local
+        + git add ./version/number
+        + git commit -m 'Bump version to v0.1.0'
+        [detached HEAD 3817200] Bump version to v0.1.0
+        1 file changed, 1 insertion(+), 1 deletion(-)
+        + git tag v0.1.0
+        selected worker: 97ad8c1afbe6
+        Identity added: /tmp/git-resource-private-key (/tmp/git-resource-private-key)
+        To github.com:moriyamaES/semver-test.git
+        d1e237f..3817200  HEAD -> main
+        * [new tag]         v0.1.0 -> v0.1.0
+        selected worker: 97ad8c1afbe6
+        Identity added: /tmp/git-resource-private-key (/tmp/git-resource-private-key)
+        Cloning into '/tmp/build/get'...
+        3817200 Bump version to v0.1.0
+        succeeded
+        ```
+
+- 成功！！
