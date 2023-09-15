@@ -1830,35 +1830,30 @@ https://concourse-ci.org/basic-git-operations.html
 - パイプラインを削除する
 
     ```sh
-    $ fly -t tutorial destroy-pipeline -p bump-soft-version -n
+    $ fly -t tutorial destroy-pipeline -p bump-soft-minor-version -n
     ```
 
 - パイプラインを作成
-
-    ```sh
-    $ fly -t tutorial set-pipeline -p bump-soft-version -c pipeline-bump-git-version.yml -n
-    ```
-
 
     ```sh
     $ cd ~/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers/
     ```
 
     ```sh
-    $ fly -t tutorial set-pipeline -p versions-and-buildnumbers -c pipeline-bump-then-save-at-git.yml -v bump_type=minor -n
+    $ fly -t tutorial set-pipeline -p bump-soft-minor-version -c pipeline-bump-soft-version.yml -v bump_type=minor -n
     ```
 
 - リソースのチェク
 
     ```sh
-    $ fly -t tutorial check-resource -r versions-and-buildnumbers/source-code
+    $ fly -t tutorial check-resource -r bump-soft-minor-version/git-repository
     ```
 
 - パイプラインの実行
     ```sh
-    fly -t tutorial unpause-pipeline -p versions-and-buildnumbers
+    fly -t tutorial unpause-pipeline -p bump-soft-minor-version
     ```
     
     ```sh
-    fly -t tutorial trigger-job -j versions-and-buildnumbers/bump-version -w
+    fly -t tutorial trigger-job -j bump-soft-minor-version/bump-version -w
     ```

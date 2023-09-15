@@ -9,7 +9,7 @@ resources:
       # GitHubに接続するための秘密鍵はVaultで管理
       private_key: ((private-key))
 jobs:
-  - name: job-bump-date
+  - name: bump-version
     plan:
       - get: git-repository
       - task: bump-timestamp-file
@@ -19,7 +19,7 @@ jobs:
             type: docker-image
             # bashとgitが実行できるコンテナをpull
             source: {repository: getourneau/alpine-bash-git}
-          # outputsをinputsと同じ名前にしないと正常動作しない模様
+          # nputsとoutputsは、同じ名前にしないと正常動作しない模様
           inputs:
             - name: git-repository
           outputs:
@@ -38,15 +38,16 @@ jobs:
                 current_version=$(cat ./version/number)
                 
                 # バージョンをバンプするタイプを指定
-                bump_type=${bump_type:-"major"}  # デフォルトはメジャーバージョンをバンプ
+                BUMP_TYPE=${BUMP_TYPE:-"major"}  # デフォルトはメジャーバージョンをバンプ
                 
-                # current_version が空文字列の場合、適切な初期バージョンを設定
-                if [ -z "$current_version" ]; then
-                    if [ "$bump_type" = "major" ]; then
+                # current_version が空文字列の場合
+                if [ "$current_version" = "" ]; then
+                    # 適切な初期バージョンを設定
+                    if [ "$BUMP_TYPE" = "major" ]; then
                       new_version="1.0.0"
-                    elif [ "$bump_type" = "minor" ]; then
+                    elif [ "$BUMP_TYPE" = "minor" ]; then
                       new_version="0.1.0"
-                    elif [ "$bump_type" = "patch" ]; then
+                    elif [ "$BUMP_TYPE" = "patch" ]; then
                       new_version="0.0.1"
                     else
                       echo "Invalid bump_type specified."
@@ -54,22 +55,23 @@ jobs:
                     fi
                 else
                   # バージョンをバンプする
-                  IFS='.' read -r -a version_parts <<< "$current_version"
-                  major="${version_parts[0]}"
-                  minor="${version_parts[1]}"
-                  patch="${version_parts[2]}"
-                  
-                  if [ "$bump_type" = "major" ]; then
+                  IFS_SAVE=$IFS
+                  IFS='.'
+                  set $current_version
+                  IFS=$IFS_SAVE
+                  major="$1"
+                  minor="$2"
+                  patch="$3"
+                  if [ "$BUMP_TYPE" = "major" ]; then
                     major=$((major + 1))
                     minor=0
                     patch=0
-                  elif [ "$bump_type" = "minor" ]; then
+                  elif [ "$BUMP_TYPE" = "minor" ]; then
                     minor=$((minor + 1))
                     patch=0
-                  elif [ "$bump_type" = "patch" ]; then
+                  elif [ "$BUMP_TYPE" = "patch" ]; then
                     patch=$((patch + 1))
                   fi
-          
                   new_version="$major.$minor.$patch"
                 fi
           
@@ -80,9 +82,11 @@ jobs:
                 # コミットしタグを付加する
                 git config --global user.email "concourse@local" # メールアドレスは必須（ユーザ名は任意）
                 git add ./version/number
-                git commit -m "Bump version to $new_version"
+                git commit -m "Bump version to v$new_version"
                 git tag v$new_version
-      
+          params:
+            BUMP_TYPE: ((bump-type))
+
       # このPUTで、ローカルリポジトリからリポジトリへのpushを実行するため、git pushの実行は不要。
       - put: git-repository
         params:
