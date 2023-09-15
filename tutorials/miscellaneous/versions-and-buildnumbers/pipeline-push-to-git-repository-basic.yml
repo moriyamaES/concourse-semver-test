@@ -32,7 +32,7 @@ jobs:
             args:
               - -exc
               - |
-                # git cloneは必要なし。この時点ではconcorseが実行してる模様。
+                # git cloneは不要。この時点ではconcorseがgit cloneを実行してる模様。
                 cd git-repository
                 date > ./version/number
                 cat ./version/number

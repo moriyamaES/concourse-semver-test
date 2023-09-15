@@ -1794,3 +1794,12 @@ Writing objects: 100% (4/4), 363 bytes | 72.00 KiB/s, done.
 Total 4 (delta 0), reused 0 (delta 0)
 To /tmp/build/cc4f7a9f/resource-gist
    b231816..60735d5  main -> main
+
+
+## 上手くいった
+
+- 以下のサイトを参考にした（ただし、ウソが多い）
+https://blog.lespaulstudioplus.info/posts/26/
+
+https://concourse-ci.org/basic-git-operations.html
+
