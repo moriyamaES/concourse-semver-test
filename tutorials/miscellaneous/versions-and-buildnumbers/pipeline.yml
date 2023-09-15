@@ -1,6 +1,6 @@
 ---
 resources:
-  - name: resource-gist
+  - name: git-repository
     type: git
     source:
       branch: main
@@ -13,7 +13,7 @@ jobs:
   - name: job-bump-date
     # serial: true
     plan:
-      - get: resource-gist
+      - get: git-repository
         # trigger: true
       - task: bump-timestamp-file
         config:
@@ -22,26 +22,26 @@ jobs:
             type: docker-image
             source: {repository: getourneau/alpine-bash-git}
 
+          # outputsをinputsと同じ名前にしないと正常動作しない模様
           inputs:
-            - name: resource-gist
-          # outputsは、gitのローカルリポジトリとなる？
+            - name: git-repository
           outputs:
-            - name: resource-gist
+            - name: git-repository
           run:
             path: /bin/sh
             args:
               - -exc
               - |
-                # git cloneは必要なし。この時点ではconcorseが実行してるため。
-                cd resource-gist
-                echo 'Hello World2' > ./version/number
+                # git cloneは必要なし。この時点ではconcorseが実行してる模様。
+                cd git-repository
+                date > ./version/number
                 cat ./version/number
-                git config --global user.email "moriyama.kazuhiro@earthsys-lab.co.jp"
-                git config --global user.name "moriyamaES"
-                # git add .
+                # メールアドレスは必須（ユーザ名は任意）
+                git config --global user.email "concourse@local"
                 git add ./version/number
                 git commit -m "Bumped date"
-                # git push origin main
-      - put: resource-gist
+                # git tag v0.1.6
+      # このPUTで、ローカルリポジトリからリポジトリへのpushが実行されるため、git pushコマンドは不要。
+      - put: git-repository
         params:
-          repository: resource-gist
+          repository: git-repository
