@@ -3,25 +3,20 @@ resources:
   - name: version
     type: semver
     source:
-      driver: git
+      driver: s3
       initial_version: 0.0.1
-      uri: https://github.com/moriyamaES/semver-test.git
-      branch: main
-      file: number
-      private_key: ((private-key))
+      access_key_id: ((aws-access-key-id))
+      secret_access_key: ((aws-secret-access-key))
+      bucket: ((version-aws-bucket))
+      region_name: us-east-1
+      key: concourse-tutorial/version
 
 jobs:
-  - name: bump-version
+  - name: display-version
     public: true
     serial: true
     plan:
-      # - get: trigger-resource
-      #   trigger: true
       - get: version
-        params: {bump: patch}
-      # - task: a-thing-that-needs-a-version
-      - put: version
-        params: {file: version/number}
       - task: display-version
         config:
           platform: linux

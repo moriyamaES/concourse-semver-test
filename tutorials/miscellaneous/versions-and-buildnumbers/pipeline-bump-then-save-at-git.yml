@@ -1,0 +1,94 @@
+---
+resources:
+  - name: source-code
+    type: git
+    source:
+      uri: https://github.com/moriyamaES/semver-test.git
+      branch: main
+      private_key: ((private_key))
+
+jobs:
+  - name: bump-version
+    public: true
+    serial: true
+    plan:
+      - get: source-code
+        trigger: true
+      - task: bump-version-task
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: busybox
+          inputs:
+            - name: source-code
+          outputs:
+            - name: updated-version
+          run:
+            path: /bin/sh
+            args:
+              - -exc
+              - |
+                # 現在のバージョンを取得
+                current_version=$(cat source-code/version/number)
+                
+                # バージョンをバンプするタイプを指定
+                bump_type=${bump_type:-"major"}  # デフォルトはメジャーバージョンをバンプ
+                
+                # current_version が空文字列の場合、適切な初期バージョンを設定
+                if [ -z "$current_version" ]; then
+                    if [ "$bump_type" = "major" ]; then
+                      new_version="1.0.0"
+                    elif [ "$bump_type" = "minor" ]; then
+                      new_version="0.1.0"
+                    elif [ "$bump_type" = "patch" ]; then
+                      new_version="0.0.1"
+                    else
+                      echo "Invalid bump_type specified."
+                      exit 1
+                    fi
+                else
+                  # バージョンをバンプするロジック
+                  IFS='.' read -r -a version_parts <<< "$current_version"
+                  major="${version_parts[0]}"
+                  minor="${version_parts[1]}"
+                  patch="${version_parts[2]}"
+                  
+                  if [ "$bump_type" = "major" ]; then
+                    major=$((major + 1))
+                    minor=0
+                    patch=0
+                  elif [ "$bump_type" = "minor" ]; then
+                    minor=$((minor + 1))
+                    patch=0
+                  elif [ "$bump_type" = "patch" ]; then
+                    patch=$((patch + 1))
+                  fi
+          
+                  new_version="$major.$minor.$patch"
+                fi
+          
+                # 新しいバージョンをファイルに書き込む
+                echo "$new_version" > source-code/version/number
+          
+                # 変更をコミット
+                cd source-code
+                git config --global user.email "you@example.com"
+                git config --global user.name "Your Name"
+                git add version/number
+                git commit -m "Bump version to $new_version"
+                git push origin main
+      - task: display-version
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: busybox
+          inputs:
+            - name: source-code
+          run:
+            path: cat
+            args: [source-code/version/number]
+

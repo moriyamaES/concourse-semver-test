@@ -896,3 +896,901 @@ errored
         1811c86 Bumped date
         succeeded
         ```
+
+
+## Concourse CI での SemVer - セマンティックバージョニング
+
+- 以下のサイトを参考とした
+
+     [公式のチュートリアル](https://concoursetutorial-ja.site.lkj.io/miscellaneous/versions-and-buildnumbers)
+
+     [公式サイト（concourse のgit の SemVer )](https://github.com/concourse/semver-resource)
+
+     [gitドライバを使用した例](https://stackoverflow.com/questions/55402179/automate-semver-in-concourseci)
+
+## バージョンを表示するパイプラインの作成
+
+- 以下のコマンドを作成
+
+    ```sh
+    $ cd ~/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers/
+    ```
+
+- `pipeline-display-version.yml`を作成
+
+    ```sh
+    $ cat pipeline-display-version.yml
+    ---
+    resources:
+    - name: version
+        type: semver
+        source:
+        driver: git
+        initial_version: 0.0.1
+        uri: https://github.com/moriyamaES/semver-test.git
+        branch: main
+        file: number
+        private_key: ((private-key))
+
+    jobs:
+    - name: display-version
+        public: true
+        serial: true
+        plan:
+        - get: version
+        - task: display-version
+            config:
+            platform: linux
+            image_resource:
+                type: docker-image
+                source: {repository: busybox}
+            inputs:
+                - name: version
+            run:
+                path: cat
+                args: [version/number]
+    ```
+
+- パイプラインの削除
+
+    ```
+    $ fly -t tutorial destroy-pipeline -p versions-and-buildnumbers -n
+    ```
+
+- パイプラインの作成
+
+    ```
+    $ fly -t tutorial set-pipeline -p versions-and-buildnumbers -c pipeline-display-version.yml -n
+    ```
+
+    - 結果
+
+        ```sh
+        resources:
+        resource version has been added:
+        + name: version
+        + source:
+        +   branch: main
+        +   driver: git
+        +   file: number
+        +   initial_version: 0.0.1
+        +   private_key: ((private-key))
+        +   uri: https://github.com/moriyamaES/semver-test.git
+        + type: semver
+        
+        jobs:
+        job display-version has been added:
+        + name: display-version
+        + plan:
+        + - get: version
+        + - config:
+        +     image_resource:
+        +       name: ""
+        +       source:
+        +         repository: busybox
+        +       type: docker-image
+        +     inputs:
+        +     - name: version
+        +     platform: linux
+        +     run:
+        +       args:
+        +       - version/number
+        +       path: cat
+        +   task: display-version
+        + public: true
+        + serial: true
+        
+        pipeline name: versions-and-buildnumbers
+
+        pipeline created!
+        you can view your pipeline here: http://localhost:8080/teams/main/pipelines/versions-and-buildnumbers
+
+        the pipeline is currently paused. to unpause, either:
+        - run the unpause-pipeline command:
+            fly -t tutorial unpause-pipeline -p versions-and-buildnumbers
+        - click play next to the pipeline in the web ui
+        ```
+ｑ
+- リソースのチェク
+
+    ```sh
+    $ fly -t tutorial check-resource -r versions-and-buildnumbers/version
+    ```
+
+    - 結果
+
+        ```sh
+        checking versions-and-buildnumbers/version in build 230
+        initializing check: version
+        selected worker: 97ad8c1afbe6
+        Cloning into '/tmp/semver-git-repo'...
+        HEAD is now at b231816 Add number file
+        succeeded
+        ```
+
+- パイプラインの実行
+    ```sh
+    fly -t tutorial unpause-pipeline -p versions-and-buildnumbers
+    ```
+
+    
+    ```sh
+    fly -t tutorial trigger-job -j versions-and-buildnumbers/display-version -w
+    ```
+
+    - 結果（成功）
+
+        ```sh
+        checking versions-and-buildnumbers/version in build 230
+        initializing check: version
+        selected worker: 97ad8c1afbe6
+        Cloning into '/tmp/semver-git-repo'...
+        HEAD is now at b231816 Add number file
+        succeeded
+        [root@control-plane ~/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers (main *+)]
+        # fly -t bucc trigger-job -j versions-and-buildnumbers/display-version -w
+        error: unknown target: bucc
+        [root@control-plane ~/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers (main *+)]
+        # fly -t tutorial unpause-pipeline -p versions-and-buildnumbers
+        unpaused 'versions-and-buildnumbers'
+        [root@control-plane ~/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers (main *+)]
+        # fly -t tutorial trigger-job -j versions-and-buildnumbers/display-version -w
+        started versions-and-buildnumbers/display-version #1
+
+        selected worker: 97ad8c1afbe6
+        initializing
+        initializing check: image
+        selected worker: 97ad8c1afbe6
+        selected worker: 97ad8c1afbe6
+        waiting for docker to come up...
+        Pulling busybox@sha256:023917ec6a886d0e8e15f28fb543515a5fcd8d938edb091e8147db4efed388ee...
+        docker.io/library/busybox@sha256:023917ec6a886d0e8e15f28fb543515a5fcd8d938edb091e8147db4efed388ee: Pulling from library/busybox
+        3f4d90098f5b: Pulling fs layer
+        3f4d90098f5b: Verifying Checksum
+        3f4d90098f5b: Download complete
+        3f4d90098f5b: Pull complete
+        Digest: sha256:023917ec6a886d0e8e15f28fb543515a5fcd8d938edb091e8147db4efed388ee
+        Status: Downloaded newer image for busybox@sha256:023917ec6a886d0e8e15f28fb543515a5fcd8d938edb091e8147db4efed388ee
+        docker.io/library/busybox@sha256:023917ec6a886d0e8e15f28fb543515a5fcd8d938edb091e8147db4efed388ee
+
+        Successfully pulled busybox@sha256:023917ec6a886d0e8e15f28fb543515a5fcd8d938edb091e8147db4efed388ee.
+
+        selected worker: 97ad8c1afbe6
+        running cat version/number
+        0.0.1succeeded
+        ```
+
+## バージョンを更新するパイプラインの作成
+
+- 以下のコマンドを実行
+
+    ```sh
+    $ cd ~/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers/
+    ```
+
+- `pipeline-bump-then-save.yml`の作成
+
+    ```sh
+    $ cat pipeline-bump-then-save.yml
+    ---
+    resources:
+    - name: version
+        type: semver
+        source:
+        driver: git
+        initial_version: 0.0.1
+        uri: https://github.com/moriyamaES/semver-test.git
+        branch: main
+        file: number
+        private_key: ((private_key))
+
+    jobs:
+    - name: bump-version
+        public: true
+        serial: true
+        plan:
+        - get: semver-test
+            trigger: true
+        - get: version
+            params: {bump: patch}
+        - put: version
+            params: {file: version/number}
+        - task: display-version
+            config:
+            platform: linux
+            image_resource:
+                type: docker-image
+                source: {repository: busybox}
+            inputs:
+                - name: version
+            run:
+                path: cat
+                args: [version/number]
+    ```
+
+- パイプラインの作成
+
+    ```
+    $ fly -t tutorial set-pipeline -p versions-and-buildnumbers -c pipeline-bump-then-save.yml -n
+    ```
+
+    - 結果
+
+        ```sh
+        jobs:
+        job display-version has been removed:
+        - name: display-version
+        - plan:
+        - - get: version
+        - - config:
+        -     image_resource:
+        -       name: ""
+        -       source:
+        -         repository: busybox
+        -       type: docker-image
+        -     inputs:
+        -     - name: version
+        -     platform: linux
+        -     run:
+        -       args:
+        -       - version/number
+        -       path: cat
+        -   task: display-version
+        - public: true
+        - serial: true
+        
+        job bump-version has been added:
+        + name: bump-version
+        + plan:
+        + - get: semver-test
+        +   trigger: true
+        + - get: version
+        +   params:
+        +     bump: patch
+        + - params:
+        +     file: version/number
+        +   put: version
+        + - config:
+        +     image_resource:
+        +       name: ""
+        +       source:
+        +         repository: busybox
+        +       type: docker-image
+        +     inputs:
+        +     - name: version
+        +     platform: linux
+        +     run:
+        +       args:
+        +       - version/number
+        +       path: cat
+        +   task: display-version
+        + public: true
+        + serial: true
+        
+        pipeline name: versions-and-buildnumbers
+
+        error: invalid pipeline config:
+        invalid jobs:
+                jobs.bump-version.plan.do[0].get(semver-test): unknown resource 'semver-test'
+        ```
+ｑ
+- リソースのチェク
+
+    ```sh
+    $ fly -t tutorial check-resource -r versions-and-buildnumbers/version
+    ```
+
+    - 結果
+
+        ```sh
+        checking versions-and-buildnumbers/version in build 302
+        initializing check: version
+        selected worker: 97ad8c1afbe6
+        From https://github.com/moriyamaES/semver-test
+        * branch            main       -> FETCH_HEAD
+        HEAD is now at b231816 Add number file
+        succeeded
+        ```
+
+- パイプラインの実行
+    ```sh
+    fly -t tutorial unpause-pipeline -p versions-and-buildnumbers
+    ```
+    
+    ```sh
+    fly -t tutorial trigger-job -j versions-and-buildnumbers/bump-version -w
+    ```
+
+    - 結果（成功）
+
+        ```sh
+        ```
+
+
+## 上手くいかないので、ChatGPTに聞いてみた
+
+
+- ChatGPTは2つの案を示してくれた
+
+- （案１）`pipeline.yml` とし、`fly set-pipeline`コマンドを以下とする
+
+    ```sh
+    resources:
+      - name: source-code
+        type: git
+        source:
+        uri: https://github.com/your/repo.git
+        branch: main
+        private_key: ((private-key))  # GitHub認証などが必要な場合
+
+    jobs:
+    - name: bump-version
+    plan:
+    - get: source-code
+    - task: bump-version-task
+        config:
+        platform: linux
+        image_resource:
+            type: docker-image
+            source:
+            repository: busybox
+        inputs:
+            - name: source-code
+        run:
+            path: /bin/sh
+            args:
+            - -exc
+            - |
+                # 現在のバージョンを取得
+                current_version=$(cat source-code/version/number)
+                
+                # バージョンをバンプするタイプを指定
+                bump_type=${bump_type:-"major"}  # デフォルトはメジャーバージョンをバンプ
+                
+                # current_version が空文字列の場合、適切な初期バージョンを設定
+                if [ -z "$current_version" ]; then
+                if [ "$bump_type" = "major" ]; then
+                    new_version="1.0.0"
+                elif [ "$bump_type" = "minor" ]; then
+                    new_version="0.1.0"
+                elif [ "$bump_type" = "patch" ]; then
+                    new_version="0.0.1"
+                else
+                    echo "Invalid bump_type specified."
+                    exit 1
+                fi
+                else
+                # バージョンをバンプするロジック
+                IFS='.' read -r -a version_parts <<< "$current_version"
+                major="${version_parts[0]}"
+                minor="${version_parts[1]}"
+                patch="${version_parts[2]}"
+                
+                if [ "$bump_type" = "major" ]; then
+                    major=$((major + 1))
+                    minor=0
+                    patch=0
+                elif [ "$bump_type" = "minor" ]; then
+                    minor=$((minor + 1))
+                    patch=0
+                elif [ "$bump_type" = "patch" ]; then
+                    patch=$((patch + 1))
+                fi
+                
+                new_version="$major.$minor.$patch"
+                fi
+                
+                # 新しいバージョンをファイルに書き込む
+                echo "$new_version" > source-code/version/number
+        outputs:
+            - name: source-code
+    ```
+
+    ```sh
+    $ fly -t your-target set-pipeline -p your-pipeline-name -c pipeline.yml -v bump_type=minor
+    ```
+
+
+    ```
+    jobs:
+    - name: bump-version
+    plan:
+    - get: source-code
+    - task: bump-version-task
+        config:
+        platform: linux
+        image_resource:
+            type: docker-image
+            source:
+            repository: busybox
+        inputs:
+            - name: source-code
+        run:
+            path: /bin/sh
+            args:
+            - -exc
+            - |
+                # 現在のバージョンを取得
+                current_version=$(cat source-code/version/number)
+                
+                # バージョンをバンプするタイプを指定
+                bump_type=${bump_type:-"major"}  # デフォルトはメジャーバージョンをバンプ
+                
+                # current_version が空文字列の場合、適切な初期バージョンを設定
+                if [ -z "$current_version" ]; then
+                if [ "$bump_type" = "major" ]; then
+                    new_version="1.0.0"
+                elif [ "$bump_type" = "minor" ]; then
+                    new_version="0.1.0"
+                elif [ "$bump_type" = "patch" ]; then
+                    new_version="0.0.1"
+                else
+                    echo "Invalid bump_type specified."
+                    exit 1
+                fi
+                else
+                # バージョンをバンプするロジック
+                IFS='.' read -r -a version_parts <<< "$current_version"
+                major="${version_parts[0]}"
+                minor="${version_parts[1]}"
+                patch="${version_parts[2]}"
+                
+                if [ "$bump_type" = "major" ]; then
+                    major=$((major + 1))
+                    minor=0
+                    patch=0
+                elif [ "$bump_type" = "minor" ]; then
+                    minor=$((minor + 1))
+                    patch=0
+                elif [ "$bump_type" = "patch" ]; then
+                    patch=$((patch + 1))
+                fi
+                
+                new_version="$major.$minor.$patch"
+                fi
+                
+                # 新しいバージョンをファイルに書き込む
+                echo "$new_version" > source-code/version/number
+                
+                # 変更をコミット
+                cd source-code
+                git config --global user.email "you@example.com"
+                git config --global user.name "Your Name"
+                git add version/number
+                git commit -m "Bump version to $new_version"
+                git push origin main
+        outputs:
+            - name: source-code
+    
+    ```
+
+## GitHub用のバージョンを更新するパイプラインの作成
+
+- 以下のコマンドを実行
+
+    ```sh
+    $ cd ~/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers/
+    ```
+
+- `pipeline-bump-then-save-at-git.yml`の作成
+
+    ```sh
+    $ cat pipeline-bump-then-save-at-git.yml
+    ---
+    resources:
+      - name: source-code
+        type: git
+        source:
+        uri: https://github.com/moriyamaES/semver-test.git
+        branch: main
+        private_key: ((private_key))
+
+    jobs:
+      - name: bump-version
+        public: true
+        serial: true
+        plan:
+          - get: source-code
+            trigger: true
+          - task: bump-version-task
+            config:
+              platform: linux
+              image_resource:
+                type: docker-image
+                source:
+                  repository: busybox
+                 inputs:
+                - name: source-code
+                run:
+                  path: /bin/sh
+                  args:
+                    - -exc
+                    - |
+                      # 現在のバージョンを取得
+                      current_version=$(cat source-code/version/number)
+                      
+                      # バージョンをバンプするタイプを指定
+                      bump_type=${bump_type:-"major"}  # デフォルトはメジャーバージョンをバンプ
+                      
+                      # current_version が空文字列の場合、適切な初期バージョンを設定
+                      if [ -z "$current_version" ]; then
+                         if [ "$bump_type" = "major" ]; then
+                           new_version="1.0.0"
+                         elif [ "$bump_type" = "minor" ]; then
+                           new_version="0.1.0"
+                         elif [ "$bump_type" = "patch" ]; then
+                           new_version="0.0.1"
+                         else
+                           echo "Invalid bump_type specified."
+                           exit 1
+                         fi
+                      else
+                        # バージョンをバンプするロジック
+                        IFS='.' read -r -a version_parts <<< "$current_version"
+                        major="${version_parts[0]}"
+                        minor="${version_parts[1]}"
+                        patch="${version_parts[2]}"
+                        
+                        if [ "$bump_type" = "major" ]; then
+                          major=$((major + 1))
+                          minor=0
+                          patch=0
+                        elif [ "$bump_type" = "minor" ]; then
+                          minor=$((minor + 1))
+                          patch=0
+                        elif [ "$bump_type" = "patch" ]; then
+                          patch=$((patch + 1))
+                        fi
+                
+                        new_version="$major.$minor.$patch"
+                      fi
+                
+                      # 新しいバージョンをファイルに書き込む
+                      echo "$new_version" > source-code/version/number
+                
+                      # 変更をコミット
+                      cd source-code
+                      git config --global user.email "you@example.com"
+                      git config --global user.name "Your Name"
+                      git add version/number
+                      git commit -m "Bump version to $new_version"
+                      git push origin main
+          - task: display-version
+            config:
+              platform: linux
+              image_resource:
+                source:
+                  repository: busybox
+                inputs:
+                  - name: source-code
+                run:
+                  path: cat
+                  args: [version/number]
+    ```
+
+
+- concourse Web UIにログインする
+
+    ```sh
+    $ fly --target tutorial login --concourse-url http://localhost:8080
+    ```
+
+    - 操作
+    - `http://localhost:8080/login?fly_port=43269` でホストOSのブラウザにアクセスし、表示されたtokenを貼り付ける
+    - ユーザID: `test`、パスワード: `test` とする
+    - 上記操作をすると、Concourse CI のWeb UIにログインできる
+
+        ```
+        logging in to team 'main'
+
+        navigate to the following URL in your browser:
+
+        http://localhost:8080/login?fly_port=43269
+
+        or enter token manually (input hidden): 
+        target saved
+        ```
+
+- パイプラインを削除する
+
+    ```sh
+    $ fly -t tutorial destroy-pipeline -p versions-and-buildnumbers -n
+    ```
+
+- パイプラインを作成
+
+    ```sh
+    $ cd ~/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers/
+    ```
+
+    ```sh
+    $ fly -t tutorial set-pipeline -p versions-and-buildnumbers -c pipeline-bump-then-save-at-git.yml -v bump_type=minor -n
+    ```
+
+- リソースのチェク
+
+    ```sh
+    $ fly -t tutorial check-resource -r versions-and-buildnumbers/source-code
+    ```
+
+- パイプラインの実行
+    ```sh
+    fly -t tutorial unpause-pipeline -p versions-and-buildnumbers
+    ```
+    
+    ```sh
+    fly -t tutorial trigger-job -j versions-and-buildnumbers/bump-version -w
+    ```
+
+## 上手くいかないのでやり直し
+
+- 以下のコマンドを実行
+
+    ```sh
+    # pwd
+    /root/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers
+    ```
+
+- パイプライン用のyamlは、以下とする
+
+    ```sh
+    $ cat pipeline.yml
+    ---
+    resources:
+      - name: resource-gist
+          type: git
+          source:
+            branch: main
+            uri: https://github.com/moriyamaES/semver-test.git
+            private_key: ((private-key))
+
+    jobs:
+    - name: job-bump-date
+        serial: true
+        plan:
+        - get: resource-gist
+        - task: bump-timestamp-file
+            config:
+            platform: linux
+            image_resource:
+                type: docker-image
+                source: {repository: getourneau/alpine-bash-git}
+
+            inputs:
+                - name: resource-gist
+            outputs:
+                - name: updated-gist
+            run:
+                path: /bin/sh
+                args:
+                - -exc
+                - |
+                    git clone resource-gist updated-gist
+                    cd updated-gist
+                    date > version/number
+                    git config --global user.email "nobody@concourse-ci.org"
+                    git config --global user.name "Concourse"
+                    git add .
+                    git commit -m "Bumped date"
+        - put: resource-gist
+            params:
+            repository: updated-gist
+    ```
+
+- concourse Web UIにログインする
+
+    ```sh
+    $ fly --target tutorial login --concourse-url http://localhost:8080
+    ```
+
+    - 操作
+    - `http://localhost:8080/login?fly_port=43269` でホストOSのブラウザにアクセスし、表示されたtokenを貼り付ける
+    - ユーザID: `test`、パスワード: `test` とする
+    - 上記操作をすると、Concourse CI のWeb UIにログインできる
+
+        ```
+        logging in to team 'main'
+
+        navigate to the following URL in your browser:
+
+        http://localhost:8080/login?fly_port=43269
+
+        or enter token manually (input hidden): 
+        target saved
+        ```
+
+- パイプラインを削除する
+
+    ```sh
+    $ fly -t tutorial destroy-pipeline -p versions-and-buildnumbers -n
+    ```
+
+- パイプラインを作成
+
+    ```sh
+    $ cd ~/concourse-semver-test/tutorials/miscellaneous/versions-and-buildnumbers/
+    ```
+
+    ```sh
+    $ fly -t tutorial set-pipeline -p versions-and-buildnumbers -c  pipeline.yml -n
+    ```
+
+    - 結果
+
+        ```sh
+        resources:
+        resource resource-gist has been added:
+        + name: resource-gist
+        + source:
+        +   branch: main
+        +   private_key: ((private-key))
+        +   uri: https://github.com/moriyamaES/semver-test.git
+        + type: git
+        
+        jobs:
+        job job-bump-date has been added:
+        + name: job-bump-date
+        + plan:
+        + - get: resource-gist
+        + - config:
+        +     image_resource:
+        +       name: ""
+        +       source:
+        +         repository: getourneau/alpine-bash-git
+        +       type: docker-image
+        +     inputs:
+        +     - name: resource-gist
+        +     outputs:
+        +     - name: updated-gist
+        +     platform: linux
+        +     run:
+        +       args:
+        +       - -exc
+        +       - |
+        +         git clone resource-gist updated-gist
+        +         cd updated-gist
+        +         date > version/number
+        +         git config --global user.email "nobody@concourse-ci.org"
+        +         git config --global user.name "Concourse"
+        +         git add .
+        +         git commit -m "Bumped date"
+        +       path: /bin/sh
+        +   task: bump-timestamp-file
+        + - params:
+        +     repository: updated-gist
+        +   put: resource-gist
+        + serial: true
+        
+        pipeline name: versions-and-buildnumbers
+
+        pipeline created!
+        you can view your pipeline here: http://localhost:8080/teams/main/pipelines/versions-and-buildnumbers
+
+        the pipeline is currently paused. to unpause, either:
+        - run the unpause-pipeline command:
+            fly -t tutorial unpause-pipeline -p versions-and-buildnumbers
+        - click play next to the pipeline in the web ui
+
+        ```
+
+
+- リソースのチェク
+
+    ```sh
+    $ fly -t tutorial check-resource -r versions-and-buildnumbers/resource-gist
+    ```
+
+    - 結果
+
+        ```sh
+        $ fly -t tutorial check-resource -r versions-and-buildnumbers/resource-gist
+        checking versions-and-buildnumbers/resource-gist in build 12691
+        initializing check: resource-gist
+        selected worker: 97ad8c1afbe6
+        Identity added: /tmp/git-resource-private-key (/tmp/git-resource-private-key)
+        Cloning into '/tmp/git-resource-repo-cache'...
+        succeeded
+        ```
+
+- パイプラインの実行
+    ```sh
+    $ fly -t tutorial unpause-pipeline -p versions-and-buildnumbers
+    ```
+    
+    ```sh
+    $ fly -t tutorial trigger-job -j versions-and-buildnumbers/job-bump-date -w
+    ```
+
+
+
+
+started versions-and-buildnumbers/job-bump-date #14
+
+selected worker: 97ad8c1afbe6
+INFO: found existing resource cache
+
+initializing
+initializing check: image
+selected worker: 97ad8c1afbe6
+selected worker: 97ad8c1afbe6
+INFO: found existing resource cache
+
+selected worker: 97ad8c1afbe6
+running /bin/sh -exc git clone resource-gist updated-gist
+cd updated-gist
+# git clone resource-gist
+# cd semver-test
+# pwd
+date > ./version/number
+cat ./version/number
+git config --global user.email "moriyama.kazuhiro@earthsys-lab.co.jp"
+git config --global user.name "moriyamaES"
+git status
+# git add .
+git add ./version/number
+git status
+git commit -m "Bumped date"
+git push origin main
+
++ git clone resource-gist updated-gist
+Cloning into 'updated-gist'...
+done.
++ cd updated-gist
++ date
++ cat ./version/number
+Fri Sep 15 13:11:33 UTC 2023
++ git config --global user.email moriyama.kazuhiro@earthsys-lab.co.jp
++ git config --global user.name moriyamaES
++ git status
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+        modified:   version/number
+
+no changes added to commit (use "git add" and/or "git commit -a")
++ git add ./version/number
++ git status
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes to be committed:
+  (use "git reset HEAD <file>..." to unstage)
+
+        modified:   version/number
+
++ git commit -m 'Bumped date'
+[main 60735d5] Bumped date
+ 1 file changed, 1 insertion(+)
++ git push origin main
+Enumerating objects: 7, done.
+Counting objects: 100% (7/7), done.
+Delta compression using up to 2 threads.
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (4/4), 363 bytes | 72.00 KiB/s, done.
+Total 4 (delta 0), reused 0 (delta 0)
+To /tmp/build/cc4f7a9f/resource-gist
+   b231816..60735d5  main -> main

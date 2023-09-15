@@ -3,13 +3,12 @@ resources:
   - name: version
     type: semver
     source:
-      driver: s3
+      driver: git
       initial_version: 0.0.1
-      access_key_id: ((aws-access-key-id))
-      secret_access_key: ((aws-secret-access-key))
-      bucket: ((version-aws-bucket))
-      region_name: us-east-1
-      key: concourse-tutorial/version
+      uri: https://github.com/moriyamaES/semver-test.git
+      branch: main
+      file: number
+      private_key: ((private-key))
 
 jobs:
   - name: display-version
